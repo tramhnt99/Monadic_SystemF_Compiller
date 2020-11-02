@@ -1,6 +1,6 @@
 (*
-Lambda Calculus Intepreter Using Monads To Propagate Errors
-Second try: without changing the type signature of >>= and store functions in list
+Lambda Calculus Intepreter Using Monads To Propagate Errors and Function Calls
+Substitution Based Interpreter
 Year 4 Capstone Project
 Tram Hoang
 *)
@@ -29,13 +29,12 @@ module LambdaMonad = struct
     | IntV of int
     | FunV of var * exp
 
-  (* First is the expression/value, then string for an error, then string for functions*)
-  type 'a t = 'a option * (string * string list)
+  type log =
+    | Subst of var * value * exp
+    | Eval of exp
 
-  (*TODO: create a data type, not strings for semantics collecting *)
-  (*For system F, type variables and function variables - so data types
-   would be more useful*)
-  (*TODO: write a closure lambda calc *)
+  (* First is the expression/value, then string for an error, then string for functions*)
+  type 'a t = 'a option * (string * log list)
             
   let return x name = (Some x, ("", [name]))
 
@@ -52,34 +51,10 @@ module LambdaMonad = struct
     match v with
     | IntV e -> Int e
     | FunV (v, e) -> Fun (v, e)
-          
-  (*Util string of functions, for printing *)
-  let string_of_binop b = 
-    match b with
-    | Add -> "Add "
-    | Sub -> "Sub "
-    | Mul -> "Mul "
-    | Div -> "Div "
-
-  let rec string_of_exp exp = 
-    match exp with
-    | Int i -> "Int " ^ (string_of_int i)
-    | Var var -> "Var " ^ var
-    | Fun (var, exp) -> "Fun " ^ var ^ (string_of_exp exp)
-    | App (exp1, exp2) -> "App " ^ (string_of_exp exp1) ^ 
-                            ", " ^ (string_of_exp exp2)
-    | Binop (b, exp1, exp2) -> "Binop " ^ 
-                               (string_of_binop b) ^ ", " ^
-                                 (string_of_exp exp1) ^ ", " ^
-                                   (string_of_exp exp2)          
-  let string_of_value v =
-    match v with
-    | IntV i -> "IntV " ^ (string_of_int i)
-    | FunV (var, exp) -> "FunV " ^ var ^ (string_of_exp exp)
 
   (* Substitution in exp of t1 with t2 *)
   let rec subst (t1: var) (t2: value) (exp: exp) : exp t = 
-    let name = "subst " ^ t1 ^ " " ^ (string_of_value t2) ^ (string_of_exp exp) in
+    let name = Subst (t1, t2, exp) in
     match exp with
     | Int _ -> return exp name
     | Var x -> if x = t1 then return (exp_of_values t2) name else return (Var x) name
@@ -95,7 +70,7 @@ module LambdaMonad = struct
        return (App (lhs, rhs)) name
 
   let rec eval (e: exp) : value t = 
-    let name = "eval " ^ (string_of_exp e) in
+    let name = Eval e in
     match e with
     | Int i -> return (IntV i) name
     | Binop (b, e1, e2) ->
