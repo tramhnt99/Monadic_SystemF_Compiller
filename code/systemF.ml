@@ -17,7 +17,7 @@ module SystemF0 = struct
   (*Types*)
   type ty = 
     | TVar of tvar (* X *)
-    | TFunc of ty list * ty (* T -> T or T -> T -> T, depending on number of param *)
+    | TFunc of ty * ty (* T -> T -> T would be represented as TFunc or TFunc *)
     | TForAll of tvar * ty (*For all X, T*)
     | TInt
     
@@ -65,7 +65,7 @@ module SystemF0 = struct
          | None -> ty
          | _ -> failwith "TVar: type lookup didn't return a type"
        end 
-    | TFunc ([TVar tv1], TVar tv2) ->
+    | TFunc (TVar tv1, TVar tv2) ->
        let equal = tv1 = tv2 in
        let subst_tv1 = Option.is_some (lookup tv1 env) in
        let subst_tv2 = Option.is_some (lookup tv2 env) in
@@ -75,18 +75,18 @@ module SystemF0 = struct
          match equal, subst_tv1, subst_tv2 with
          | true, true, _ -> 
             let new_ty = Option.get (lookup tv1 env) |> getTypV in
-            TFunc ([new_ty], new_ty)
+            TFunc (new_ty, new_ty)
          | true, false, _ -> ty
          | false, true, true ->
             let new_ty1 = Option.get (lookup tv1 env) |> getTypV in
             let new_ty2 = Option.get (lookup tv2 env) |> getTypV in
-            TFunc ([new_ty1], new_ty2)
+            TFunc (new_ty1, new_ty2)
          | false, true, false ->
             let new_ty1 = Option.get (lookup tv1 env) |> getTypV in
-            TFunc ([new_ty1], TVar tv2)
+            TFunc (new_ty1, TVar tv2)
          | false, false, true ->
             let new_ty2 = Option.get (lookup tv2 env) |> getTypV in
-            TFunc ([TVar tv1], new_ty2)
+            TFunc (TVar tv1, new_ty2)
          | _ -> ty
        end
     | _ -> ty
@@ -172,19 +172,14 @@ module SystemF0 = struct
 
 end
 
-(*TODO: typecheck at Application. type of value.
-
- *)
+(*TODO: typecheck at Application.*)
 
 
 (*
-testing
-
-
-
 open SystemF;;
 open SystemF0;;
 open SystemF_tests;;
+open SystemF_TypeChecker;;
 
     (* printf "\n";
      * printf "EXP is %s" (string_of_exp t);
