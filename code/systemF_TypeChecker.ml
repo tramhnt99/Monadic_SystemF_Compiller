@@ -9,15 +9,26 @@ Tram Hoang
 module SystemF0TypeChecker = struct
   open SystemF
   open SystemF0
+  open SystemF_sig
+  open SystemF0Signature
 
-  type ty_environment = (var * ty) list
+  type ty_environment = (var * value) list
+  (*TODO: Current problem, currently type X instatiated by Int, for eg, is in the same list of var x of type Int (that used to be type X).*)
+  (*Note: To avoid duplicated code, the environment is var * value instead of 
+    var * ty to be able to reuse evalAbsty *)
 
-  let lookup_ty x (env: ty_environment) : ty option = 
+  let lookup_ty x (env: ty_environment) : value option = 
     try Some (List.assoc x env)
     with _ -> None
 
   let add_env (v: var) (x: ty) (env: ty_environment) : ty_environment = 
-    (v,x) :: env
+    (v,TypV x) :: env
+    
+  let is_polym ty : bool = 
+    match ty with
+    | TVar _ -> true
+    | TInt -> false
+    | _ -> failwith "Should not substitute for this type"
 
   let rec type_of_exp (env: ty_environment) (e: exp) : ty * ty_environment = 
     match e with
@@ -25,8 +36,9 @@ module SystemF0TypeChecker = struct
     | Typ ty -> ty, env
     | Var v -> 
        (match lookup_ty v env with
-        | Some ty -> ty, env
-        | None -> failwith ("Looking for type of undeclared variable " ^ v))
+        | Some ty -> getTypV ty, env
+        | None -> TVar "ZXC", env) 
+    (* ^ this case is using function without instating type *)
     | ETVar tv -> TVar tv, env
     | ETAbs (tv, e) -> TForAll (tv, type_of_exp env e |> fst), env
     | ETApp (e1, e2) -> 
@@ -43,14 +55,17 @@ module SystemF0TypeChecker = struct
          | _ -> failwith "ETApp applied e2 is not a type"
        in
        let new_env = add_env tvar ty_app env in
+
+       (*Propagate that X polymorphic is no longer*)
        (match e1 with
         | ETAbs (_, e) -> type_of_exp new_env e
         | _ -> failwith "something went wrong in tvar evaluation"
        )
     | Abs (v, ty, exp) -> 
        (*First, put v in env*)
-       let new_env = add_env v ty env in
-       TFunc ([ty], type_of_exp new_env exp |> fst), new_env
+       let new_ty = evalAbsty env ty lookup_ty in
+       let new_env = add_env v new_ty env in
+       TFunc (new_ty, type_of_exp new_env exp |> fst), new_env
     | App (e1, e2) -> 
        (*Find type of e1*)
        let e1_ty = type_of_exp env e1 in
@@ -58,26 +73,31 @@ module SystemF0TypeChecker = struct
        let e2_ty = type_of_exp env e2 in
        let res: ty = 
          match e1_ty with
-          | TFunc (ty_l, ty), _ -> 
-             if (List.hd ty_l) = fst e2_ty then
-               if List.length ty_l = 1 then ty
-               else TFunc (List.tl ty_l, ty)
-             else failwith ("1 Wrong application types. Failed the T-App rule")
-          | _ -> failwith ("2 Wrong application types. Failed the T-App rule")
-         in
+         | TFunc (ty_param, ty), _ -> 
+            if ty_param = fst e2_ty then ty
+            else failwith ("1 Wrong application types. Failed the T-App rule where ty_param is " ^ (Utils.string_of_ty ty_param) ^ " and e2_ty is " ^ (fst e2_ty |> Utils.string_of_ty)
+                   
+                   )
+         | TForAll _, _ -> (*then any type suffices*)
+            (*TODO: As long is ty matches the form the e2_ty*)
+            fst e2_ty
+         | _ ->
+            failwith ("3 Wrong application types. Failed the T-App rule with Type"
+              ^ Utils.string_of_ty (fst e1_ty))
+       in
        res, env
-    | Binop _ -> TFunc ([TInt; TInt], TInt), env
-  
-  let type_of_value (v: value) (env: ty_environment) : ty = 
+    | Binop _ -> TFunc (TInt, TFunc (TInt, TInt)), env
+    
+  let type_of_value (env: ty_environment) (v: value): ty = 
     match v with
     | IntV _ -> TInt
     | Closure (_, v_op, t, e) -> 
        (match v_op with
-        | None -> TFunc ([t], type_of_exp env e |> fst)
+        | None -> TFunc (t, type_of_exp env e |> fst)
         | Some v -> 
            let new_env = add_env v t env in
            (*TODO: check this one, written when v tired*)
-           TFunc ([t], type_of_exp new_env e |> fst)
+           TFunc (t, type_of_exp new_env e |> fst)
        )
     | TypV ty -> ty
 
