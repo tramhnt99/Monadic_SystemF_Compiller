@@ -5,14 +5,13 @@ open SystemF0Evaluator
 open SystemF_sig
 open SystemF0Signature
 
-
 let id_func = ETAbs ("X", Abs ("x", TVar "X", Var "x"))
 let double = ETAbs ("X", Abs ("f", TFunc (TVar "X", TVar "X"), Abs ("a", TVar ("X"), App (Var "f", App (Var "f", Var "a")))))
 let int_func = Abs ("k",TInt, Binop (Add, Var "k", Int 2))
 
 
 (*Evalution tests *)
-let eval' = (fun exp -> eval [] exp []) 
+let eval' = (fun exp -> eval [] exp) 
 
 let%test "Evaluate polymorphic id function" = 
   eval' (App (ETApp (id_func, Typ TInt), Int 1)) = IntV 1

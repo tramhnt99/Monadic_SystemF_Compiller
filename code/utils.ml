@@ -24,6 +24,18 @@ let rec string_of_exp e =
     | Typ ty -> "Typ " ^ string_of_ty ty ^ ", "
   in
   "( " ^ contents ^ " ) "
+  
+let string_of_value v = 
+  match v with
+  | IntV i -> "IntV " ^ (string_of_int i)
+  | Closure (_, v_op, ty, exp) ->
+     (match v_op with
+      | None -> "Closure ( " ^ "some env, " ^  
+                  "None, " ^ (string_of_ty ty) ^ ", " ^ string_of_exp exp
+      | Some var -> "Closure ( " ^ var ^", " ^  
+                  "None, " ^ (string_of_ty ty) ^ ", " ^ string_of_exp exp
+     )
+  | TypV ty -> "TypV " ^  string_of_ty ty
 
 
 (* ********************************* Printing functions ************************ *)
@@ -34,6 +46,8 @@ let print_exp (e: exp) : unit =
 
 let print_env env : unit =
   printf "\n";
-  printf "ENV is %s" (List.fold_left (fun res e -> res ^ " " ^ fst e) "" env);
+  printf "ENV is %s" (List.fold_left 
+                        (fun res e -> res ^ " " ^ fst e ^ 
+                                        " : " ^ string_of_value (snd e)) "" env);
   printf "\n"
   

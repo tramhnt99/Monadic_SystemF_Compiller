@@ -75,9 +75,13 @@ module SystemF0TypeChecker = struct
          match e1_ty with
          | TFunc (ty_param, ty), _ -> 
             if ty_param = fst e2_ty then ty
-            else failwith ("1 Wrong application types. Failed the T-App rule where ty_param is " ^ (Utils.string_of_ty ty_param) ^ " and e2_ty is " ^ (fst e2_ty |> Utils.string_of_ty)
-                   
-                   )
+            else failwith ("1 Wrong application types. Failed the T-App rule where ty_param is " ^ (Utils.string_of_ty ty_param) ^ " and e2_ty is " ^ (fst e2_ty |> Utils.string_of_ty) ^ "\n"
+                         ^ "e2 is " ^ (Utils.string_of_exp e2)
+                         ^ "and e1 is " ^ (Utils.string_of_exp e1)
+
+
+
+)
          | TForAll _, _ -> (*then any type suffices*)
             (*TODO: As long is ty matches the form the e2_ty*)
             fst e2_ty

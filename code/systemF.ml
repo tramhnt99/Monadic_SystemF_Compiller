@@ -85,6 +85,7 @@ module SystemF0 = struct
        end
     | Binop (b, e1, e2) -> Binop (b, inter_eval env e1, inter_eval env e2)
     | _ -> t
+
 end
 
 (*TODO: typecheck at Application.*)

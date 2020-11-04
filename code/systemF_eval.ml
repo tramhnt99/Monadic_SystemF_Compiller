@@ -15,10 +15,10 @@ module SystemF0Evaluator = struct
   open SystemF0Signature
 
   (*Evaluate statements to a final value*)
-  let rec eval (env: environment) (t: exp) (ty_env: ty_environment) : value =
-    (*Recursively use the type environment to typecheck programs*)
-    let (_, new_ty_env) = type_of_exp ty_env t in
-    let eval' = (fun env' e' -> eval env' e' new_ty_env) in
+  let eval (env': environment) (t': exp) : value =
+    (*Typecheck the program before running*)
+    let _ = type_of_exp [] t' in
+    let rec eval_help (env: environment) (t: exp) : value = 
     match t with
     | Int i -> IntV i
     | Typ ty -> TypV ty
@@ -26,24 +26,24 @@ module SystemF0Evaluator = struct
     | ETVar tv -> Option.get (lookup tv env)
     | ETAbs (tv, exp)-> Closure (env, None, TVar tv, exp)
     | ETApp (e1, e2) ->
-       (match eval' env e1, eval' env e2 with
+       (match eval_help env e1, eval_help env e2 with
         | (Closure (cenv, _, TVar x, body), TypV ty') -> 
-           eval' ((x, TypV ty') :: cenv) body
+           eval_help ((x, TypV ty') :: cenv) body
         | _ -> failwith "App to a non closure/tried to apply a non type"
        )
     | Abs (v, ty, exp) -> 
        Closure (env, Some v, evalAbsty env ty lookup, inter_eval env exp)
     | App (e1, e2) ->
-       (match eval' env e1, eval' env e2 with
+       (match eval_help env e1, eval_help env e2 with
         | Closure (cenv, Some x, _, body), v ->
-           eval' ((x, v) :: cenv) body
+           eval_help ((x, v) :: cenv) body
         | Closure (cenv, None, _, body), _ -> 
-           eval' cenv (App (body, e2))
+           eval_help cenv (App (body, e2))
         (*application to a polymorphic type, just continue*)
         | _ -> failwith "App to a non function"
        )
     | Binop (b, e1, e2) ->
-       (match eval' env e1, eval' env e2 with
+       (match eval_help env e1, eval_help env e2 with
         | IntV i1, IntV i2 ->
            (match b with
             | Add -> IntV (i1 + i2)
@@ -53,5 +53,6 @@ module SystemF0Evaluator = struct
            )
         | _ -> failwith "Binop applied to non-Int type"
        ) 
+    in eval_help env' t'
 
 end
