@@ -17,9 +17,9 @@ module SystemF0 = struct
   (*Types*)
   type ty = 
     | TVar of tvar (* X *)
-    | TFunc of ty * ty (* T -> T *)
+    | TFunc of ty list * ty (* T -> T or T -> T -> T, depending on number of param *)
     | TForAll of tvar * ty (*For all X, T*)
-    | Int
+    | TInt
     
   (* Binary Operation *)
   type binop = 
@@ -32,11 +32,11 @@ module SystemF0 = struct
   type exp = 
     | Int of int
     | Var of var
-    | TVar of tvar
+    | ETVar of tvar
     | Abs of var * ty * exp
     | App of exp * exp
-    | TAbs of tvar * exp
-    | TApp of exp * exp
+    | ETAbs of tvar * exp
+    | ETApp of exp * exp
     | Typ of ty
     | Binop of binop * exp * exp
 
@@ -54,7 +54,7 @@ module SystemF0 = struct
     match typv with
     | TypV ty -> ty
     | _ -> failwith "wrong function"
-
+        
   (*Evaluate Abs for making a polymorphic type a monomoprhic one*)
   let evalAbsty (env: environment) (ty: ty) : ty =
     match ty with
@@ -65,50 +65,51 @@ module SystemF0 = struct
          | None -> ty
          | _ -> failwith "TVar: type lookup didn't return a type"
        end 
-    | TFunc (TVar tv1, TVar tv2) ->
+    | TFunc ([TVar tv1], TVar tv2) ->
        let equal = tv1 = tv2 in
        let subst_tv1 = Option.is_some (lookup tv1 env) in
        let subst_tv2 = Option.is_some (lookup tv2 env) in
+       (*TODO: Reduce this to a fold function because TFunc can have
+        many params, thus many param types*)
        begin
          match equal, subst_tv1, subst_tv2 with
          | true, true, _ -> 
             let new_ty = Option.get (lookup tv1 env) |> getTypV in
-            TFunc (new_ty, new_ty)
+            TFunc ([new_ty], new_ty)
          | true, false, _ -> ty
          | false, true, true ->
             let new_ty1 = Option.get (lookup tv1 env) |> getTypV in
             let new_ty2 = Option.get (lookup tv2 env) |> getTypV in
-            TFunc (new_ty1, new_ty2)
+            TFunc ([new_ty1], new_ty2)
          | false, true, false ->
             let new_ty1 = Option.get (lookup tv1 env) |> getTypV in
-            TFunc (new_ty1, TVar tv2)
+            TFunc ([new_ty1], TVar tv2)
          | false, false, true ->
             let new_ty2 = Option.get (lookup tv2 env) |> getTypV in
-            TFunc (TVar tv1, new_ty2)
+            TFunc ([TVar tv1], new_ty2)
          | _ -> ty
        end
     | _ -> ty
 
-  (* let evalAbsparam (env: environment) (v: var) : var = 
-   *   match lookup env var with
-   *   |  *)
+  (* Get expression of value *)
   let exp_of_value (v: value) : exp =
     match v with
     | IntV i -> Int i
     | Closure (_, Some v, ty, exp) -> Abs (v, ty, exp)
-    | Closure (_, None, TVar tv, exp) -> TAbs (tv, exp)
+    | Closure (_, None, TVar tv, exp) -> ETAbs (tv, exp)
     | TypV t -> Typ t
     | _ -> failwith "Cannot get exp of this value"
 
+  (*Utility function for debugging *)
   let rec string_of_exp e =
     match e with
     | Int i -> "Int " ^ (string_of_int i)
     | Var v -> "Var " ^ v
-    | TVar tv -> "TVar " ^ tv
+    | ETVar tv -> "TVar " ^ tv
     | Abs (v, _, e') -> "Abs " ^ v ^ " " ^ string_of_exp e'
     | App (e1, e2) -> "App " ^ string_of_exp e1 ^ " " ^ string_of_exp e2
-    | TAbs (tv, e') -> "TAbs " ^ tv ^ " " ^ string_of_exp e'
-    | TApp (e1, e2) -> "TApp " ^ string_of_exp e1 ^ " " ^ string_of_exp e2
+    | ETAbs (tv, e') -> "TAbs " ^ tv ^ " " ^ string_of_exp e'
+    | ETApp (e1, e2) -> "TApp " ^ string_of_exp e1 ^ " " ^ string_of_exp e2
     | Binop (_, e1, e2) -> "Binop " ^ "some binop " ^ string_of_exp e1 ^ " " ^ string_of_exp e2
     | _ -> "Something else"
 
@@ -134,23 +135,20 @@ module SystemF0 = struct
 
   (*Evaluate statements to a final value*)
   let rec eval (env: environment) (t: exp) : value =
-    (* printf "\n";
-     * printf "EXP is %s" (string_of_exp t);
-     * printf "ENV is %s" (List.fold_left (fun res e -> res ^ " " ^ fst e) "" env);
-     * printf "\n"; *)
     match t with
     | Int i -> IntV i
     | Typ ty -> TypV ty
     | Var v -> Option.get (lookup v env)
-    | TVar tv -> Option.get (lookup tv env)
-    | TAbs (tv, exp)-> Closure (env, None, TVar tv, exp)
-    | TApp (e1, e2) ->
+    | ETVar tv -> Option.get (lookup tv env)
+    | ETAbs (tv, exp)-> Closure (env, None, TVar tv, exp)
+    | ETApp (e1, e2) ->
        (match eval env e1, eval env e2 with
         | (Closure (cenv, _, TVar x, body), TypV ty') -> 
            eval ((x, TypV ty') :: cenv) body
         | _ -> failwith "App to a non closure/tried to apply a non type"
        )
-    | Abs (v, ty, exp) -> Closure (env, Some v, evalAbsty env ty, inter_eval env exp)
+    | Abs (v, ty, exp) -> 
+       Closure (env, Some v, evalAbsty env ty, inter_eval env exp)
     | App (e1, e2) ->
        (match eval env e1, eval env e2 with
         | Closure (cenv, Some x, _, body), v ->
@@ -174,7 +172,9 @@ module SystemF0 = struct
 
 end
 
-(*TODO: if given an element while type is polymorphic, can just evaluate ?? or should infer *)
+(*TODO: typecheck at Application. type of value.
+
+ *)
 
 
 (*
@@ -185,6 +185,11 @@ testing
 open SystemF;;
 open SystemF0;;
 open SystemF_tests;;
+
+    (* printf "\n";
+     * printf "EXP is %s" (string_of_exp t);
+     * printf "ENV is %s" (List.fold_left (fun res e -> res ^ " " ^ fst e) "" env);
+     * printf "\n"; *)
 
 
  *)
