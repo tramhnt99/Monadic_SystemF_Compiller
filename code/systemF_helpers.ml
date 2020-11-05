@@ -8,7 +8,7 @@ Tram Hoang
 
 (*Church numerals pg33 *)
 
-module SystemF0 = struct
+module SystemF0Helpers = struct
   open SystemF_sig
   open SystemF0Signature
 

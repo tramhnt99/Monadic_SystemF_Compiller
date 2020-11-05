@@ -7,15 +7,12 @@ Tram Hoang
 *)
 
 module SystemF0TypeChecker = struct
-  open SystemF
-  open SystemF0
-  open SystemF_sig
-  open SystemF0Signature
+  open SystemF_helpers.SystemF0Helpers
+  open SystemF_sig.SystemF0Signature
 
-  type ty_environment = (var * value) list
-  (*TODO: Current problem, currently type X instatiated by Int, for eg, is in the same list of var x of type Int (that used to be type X).*)
   (*Note: To avoid duplicated code, the environment is var * value instead of 
-    var * ty to be able to reuse evalAbsty *)
+    var * ty to be able to reuse evalAbsty *)       
+  type ty_environment = (var * value) list
 
   let lookup_ty x (env: ty_environment) : value option = 
     try Some (List.assoc x env)
@@ -75,12 +72,7 @@ module SystemF0TypeChecker = struct
          match e1_ty with
          | TFunc (ty_param, ty), _ -> 
             if ty_param = fst e2_ty then ty
-            else failwith ("1 Wrong application types. Failed the T-App rule where ty_param is " ^ (Utils.string_of_ty ty_param) ^ " and e2_ty is " ^ (fst e2_ty |> Utils.string_of_ty) ^ "\n"
-                         ^ "e2 is " ^ (Utils.string_of_exp e2)
-                         ^ "and e1 is " ^ (Utils.string_of_exp e1)
-
-
-
+            else failwith ("1 Wrong application types. Failed the T-App rule where ty_param is " ^ (Utils.string_of_ty ty_param) ^ " and e2_ty is " ^ (fst e2_ty |> Utils.string_of_ty)
 )
          | TForAll _, _ -> (*then any type suffices*)
             (*TODO: As long is ty matches the form the e2_ty*)
@@ -106,3 +98,5 @@ module SystemF0TypeChecker = struct
     | TypV ty -> ty
 
 end
+
+  (*TODO: Current problem, currently type X instatiated by Int, for eg, is in the same list of var x of type Int (that used to be type X).*)

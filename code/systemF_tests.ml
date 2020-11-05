@@ -1,9 +1,6 @@
-open SystemF_TypeChecker
-open SystemF0TypeChecker
-open SystemF_eval
-open SystemF0Evaluator
-open SystemF_sig
-open SystemF0Signature
+open SystemF_typechecker.SystemF0TypeChecker
+open SystemF_eval.SystemF0Evaluator
+open SystemF_sig.SystemF0Signature
 
 let id_func = ETAbs ("X", Abs ("x", TVar "X", Var "x"))
 let double = ETAbs ("X", Abs ("f", TFunc (TVar "X", TVar "X"), Abs ("a", TVar ("X"), App (Var "f", App (Var "f", Var "a")))))
@@ -38,3 +35,6 @@ let%test "Function type of double function is polymorphic and correct" =
 let%test "Instatiating types in function double" =
   type_of_exp [] (ETApp (double, Typ TInt)) |> fst =
     TFunc (TFunc (TInt, TInt), TFunc (TInt, TInt))
+let%test "Typecheck double applied to Int function" =
+  type_of_exp [] (App (App (double, int_func), Int 2)) |> fst =
+    TFunc (TInt, TFunc (TInt, TInt))

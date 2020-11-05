@@ -7,12 +7,9 @@ Tram Hoang
 *)
 
 module SystemF0Evaluator = struct
-  open SystemF
-  open SystemF0
-  open SystemF_TypeChecker
-  open SystemF0TypeChecker
-  open SystemF_sig
-  open SystemF0Signature
+  open SystemF_helpers.SystemF0Helpers
+  open SystemF_typechecker.SystemF0TypeChecker
+  open SystemF_sig.SystemF0Signature
 
   (*Evaluate statements to a final value*)
   let eval (env': environment) (t': exp) : value =
