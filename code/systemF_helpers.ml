@@ -9,8 +9,7 @@ Tram Hoang
 (*Church numerals pg33 *)
 
 module SystemF0Helpers = struct
-  open SystemF_sig
-  open SystemF0Signature
+  open SystemF_sig.SystemF0Signature
 
   let lookup x (env: environment) : value option = 
     try Some (List.assoc x env)

@@ -16,7 +16,7 @@ module SystemF0Signature = struct
     | TFunc of ty * ty (* T -> T -> T would be represented as TFunc or TFunc *)
     | TForAll of tvar * ty (*For all X, T*)
     | TInt
-    
+      
   (* Binary Operation *)
   type binop = 
     | Add
