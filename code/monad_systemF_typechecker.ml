@@ -9,20 +9,13 @@ module MonadSystemFTypeChecker = struct
   open SystemF_sig.SystemF0Signature
   open Monad_systemF_helpers.MonadSystemFHelpers
 
-  type ty_environment = (var * value) list
+  let add_env (v: tvar) (x: ty) (env: environment) : environment =
+    { types = (v, TypV x) :: env.types
+    ; variables = env.variables}
 
-  let lookup_ty x (env: ty_environment) : value option t = 
-    let name = Lookupty (x, env) in
-    let res = 
-      try Some (List.assoc x env)
-      with _ -> None
-    in
-    return res name
+  let empty_env : environment = {types = []; variables = []}
 
-  let add_env (v: var) (x: ty) (env: ty_environment) : ty_environment =
-    (v,TypV x) :: env
-
-  let rec type_of_exp (env: ty_environment) (e: exp) : (ty * ty_environment) t = 
+  let rec type_of_exp (env: environment) (e: exp) : (ty * environment) t = 
     let name = TypeOfExp (env, e) in
     let rt = fun res -> return res name in
     match e with
@@ -31,9 +24,8 @@ module MonadSystemFTypeChecker = struct
     | Var v -> 
        ( lookup_ty v env >>= fun nv ->
          match nv with
-        | Some ty -> 
-           getTypV ty >>= fun ty' -> (ty', env) |> rt
-        | None -> (TVar "ZXC", env) |> rt )  
+        | Some ty -> (ty, env) |> rt
+        | None -> None, [Error "Type of Var v is not specified anywhere"] )  
     (* ^ this case is using function without instating type *)
     | ETVar tv -> (TVar tv, env) |> rt
     | ETAbs (tv, e) -> 
@@ -63,7 +55,7 @@ module MonadSystemFTypeChecker = struct
        )
     | Abs (v, ty, exp) -> 
        (*First, put v in env*)
-       evalAbsty env ty lookup_ty >>= fun new_ty ->
+       propTy env ty >>= fun new_ty ->
        let new_env = add_env v new_ty env in
        type_of_exp new_env exp >>= fun ne -> 
        (TFunc (new_ty, ne |> fst), new_env) |> rt
@@ -89,7 +81,7 @@ module MonadSystemFTypeChecker = struct
        res >>= fun r -> (r, env) |> rt
     | Binop _ -> (TFunc (TInt, TFunc (TInt, TInt)), env) |> rt
     
-  let type_of_value (env: ty_environment) (v: value): ty t = 
+  let type_of_value (env: environment) (v: value): ty t = 
     let name = TypeOfValue (env, v) in
     let rt = fun res -> return res name in
     match v with

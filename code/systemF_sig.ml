@@ -40,7 +40,8 @@ module SystemF0Signature = struct
     | IntV of int
     | Closure of environment * var option * ty * exp
     | TypV of ty
-  and environment = (var * value) list
+  and environment = {types: (string * value) list
+                    ; variables: (string * value) list}
 
 end
 

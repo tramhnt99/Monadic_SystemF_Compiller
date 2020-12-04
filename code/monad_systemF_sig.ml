@@ -4,19 +4,27 @@ Year 4 Capstone Project
 Tram Hoang
 *)
 
+(*
+Files:
+Monad_systemF_eval - evaluate function
+Monad_systemF_typechecker - typechecker
+Monad_systemF_helpers - helper functions
+Monad_systemF_tests - Tests
+ *)
+
 module MonadSystemFSignature = struct
   open SystemF_sig.SystemF0Signature
 
   (*Log stands for every single function *)
   type log = 
     | Eval of environment * exp
-    | Lookup of string * environment
-    | InterEval of environment * exp
-    | EvalAbsTy of environment * ty
+    | LookupVar of string * environment
+    | LookupType of string * environment
+    | PropValTy of environment * exp
+    | PropTy of environment * ty
     | Error of string
     | GetTypV of value
     | ExpOfValue of value 
-    | Lookupty of string * environment
     | TypeOfExp of environment * exp
     | TypeOfValue of environment * value
     
@@ -31,5 +39,6 @@ module MonadSystemFSignature = struct
     | (Some e, l) -> 
        let res, new_l = f e in
        res, new_l @ l
-
 end
+
+
