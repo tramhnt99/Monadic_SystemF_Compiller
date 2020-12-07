@@ -47,11 +47,14 @@ module LinkedGraph = struct
       let equal i j = i=j
       let hash i = i land max_int
     end
-  module IntIntHash =
+  module IntIntOptHash =
     struct
-      type t = int * int
+      type t = int * int option
       let equal (i1, i2) (j1, j2) = i1 = j1 && i2 = j2
-      let hash (i1, i2) = (i1 land max_int) land (i2 land max_int)
+      let hash (i1, i2) = 
+        match i2 with
+        | None -> (i1 land max_int)
+        | Some i -> (i1 land max_int) land (i land max_int)
     end
 
     
@@ -67,13 +70,13 @@ module LinkedGraph = struct
                        struct
                          (* might update the compare method for edges *)
                          let compare = Stdlib.compare
-                         type t = int * int
+                         type t = int * int option
                        end
                      )
 
   (* Hash Tables of Nodes and Edges Identifiers to actual Nodes and Edges *)
   module NodeTable = Hashtbl.Make(IntHash)
-  module EdgeTable = Hashtbl.Make(IntIntHash)
+  module EdgeTable = Hashtbl.Make(IntIntOptHash)
 
   (*Type constructor for an 'a, 'b graph 
     next_node_id - next ref number to be id
@@ -126,7 +129,7 @@ module LinkedGraph = struct
       _ -> false
 
   (*Find the edge in graph by id of the nodes*)
-  let edge_in_graph g (src: int) (dst: int) : bool =
+  let edge_in_graph g (src: int) (dst: int option) : bool =
     let edges = g.edges in
     try
       let _ = EdgeSet.find (src, dst) !edges in
@@ -164,24 +167,40 @@ module LinkedGraph = struct
     Hashtbl.add g.vnode_id_map v new_id
     
   (*Add edge with it's corresponding value*)
-  let add_edge g (src: 'a) (dst: 'a) value : unit =
-    assert (vnode_in_graph g src && vnode_in_graph g dst);
-    (*Find id of nodes src and dst*)
-    let src_id = Hashtbl.find g.vnode_id_map src in
-    let dst_id = Hashtbl.find g.vnode_id_map dst in
-    (*Update the set*)
-    g.edges := EdgeSet.add (src_id , dst_id) !(g.edges);
-    let src_node = NodeTable.find g.id_node_map src_id in
-    let dst_node = NodeTable.find g.id_node_map dst_id in
-    (*Update the nodes*)
-    add_prev dst_node src_id;
-    add_next src_node dst_id;
-    (*Update the edge map*)
-    EdgeTable.add g.edge_map (src_id, dst_id) value
+  (*Dst to an edge is option int - because we want edges that point outwards
+    before we know the state it's going to reach
+   *)
+  let add_edge g (src: 'a) (dst: 'a option) value : unit =
+    assert (vnode_in_graph g src);
+    let (src_id, dst_id) = 
+      let s_id = Hashtbl.find g.vnode_id_map src in
+      match dst with
+      | None -> 
+         (*Update the edge map*)
+         EdgeTable.add g.edge_map (s_id, None) value;
+         (*We don't update the nodes cause there's no dst id*)
+         (s_id, None)
+      | Some dst_value -> 
+         assert (vnode_in_graph g dst_value);
+         let d_id = Hashtbl.find g.vnode_id_map dst_value in
+         (*Update the nodes*)
+         let src_node = NodeTable.find g.id_node_map s_id in
+         let dst_node = NodeTable.find g.id_node_map d_id in
+         add_prev dst_node s_id;
+         add_next src_node d_id;
+         (*Update the edge map*)
+         EdgeTable.add g.edge_map (s_id, Some d_id) value;
+         (s_id, Some d_id)
+    in
+    (*Update the set of edges*)
+    g.edges := EdgeSet.add (src_id, dst_id) !(g.edges);
+         
+    
+
 
 
   (*Combine the graph g2 into graph g1*)
-  (* let combine_graphs g1 g2 : graph =
+  (* let combine_graphs g1 g2 : ('a, 'b) graph =
    *   
    *   NodeSet.iter (fun node -> 
    *       if id_node_in_graph g1 node then (\* just update the edges *\)
