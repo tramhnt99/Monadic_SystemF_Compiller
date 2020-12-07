@@ -23,12 +23,6 @@ module MonadSystemFHelpers = struct
       | TypV ty' -> return (Some ty') name
       | _ -> None, [Error ("lookup_ty got a non-type result")]
     with _ -> return None name
-  
-  (* let getTypV typv : ty t = 
-   *   let name = GetTypV (typv) in
-   *   match typv with
-   *   | TypV ty -> return ty name
-   *   | _ -> None, [Error "wrong function"] *)
          
   (*Evaluate Abs for making a polymorphic type a monomoprhic one*)
   let propTy (env: environment) (ty: ty): ty t =
