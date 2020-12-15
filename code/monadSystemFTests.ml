@@ -1,8 +1,11 @@
-open Monad_systemF_typechecker.MonadSystemFTypeChecker
-open Monad_systemF_eval.MonadSystemFEvaluator
-open SystemF_sig.SystemF0Signature
-open Monad_systemF_sig.MonadSystemFSignature
 open CNat
+open MonadSystemFTypechecker
+open MonadSystemFEval
+open SystemFSig.SystemF0Signature
+open MonadSystemFSig
+
+module Evaluator = MonadicEvaluator(LogMonad)
+module TypeChecker = MonadicTypeChecker(LogMonad)
 
 
 
@@ -14,19 +17,26 @@ let selfApp = Abs ("x", TForAll ("X", TFunc (TVar "X", TVar "X")), App (ETApp (V
 
 let empty_env : environment = {types = []; variables = []}
 
-let eval' = (fun exp -> eval empty_env exp)
+let eval' = (fun exp -> Evaluator.eval empty_env exp |> Evaluator.get_result)
 
 let%test "Evaluate polymorphic id function" = 
-  eval' (App (ETApp (id_func, Typ TInt), Int 1)) |> fst = Some (IntV 1)
+  eval' (App (ETApp (id_func, Typ TInt), Int 1)) = Some (IntV 1)
 let%test "Evaluate double for all polymorphic \"X\" to become Int" =
-  eval' (ETApp (double, Typ TInt)) |> fst = 
+  eval' (ETApp (double, Typ TInt)) = 
     Some (Closure ({types = [("X", TypV TInt)]; variables = []}, Some "f",
                    TFunc (TInt, TInt), Abs ("a", TInt, App (Var "f", App (Var "f", Var "a")))))
 let%test "Evalute double applied to Int function" =
-  eval' (App (App (double, int_func), Int 2)) |> fst = Some (IntV 6)
+  eval' (App (App (double, int_func), Int 2)) = Some (IntV 6)
 
 (* ********************************* Typechecker tests ************************************** *)
-let typecheck_correct = fun res -> res |> fst |> Option.get |> fst
+let typecheck_correct = (fun res -> 
+    let temp = TypeChecker.get_result res in
+    if Option.is_some temp then Option.get temp |> fst
+    else failwith "Typechecker didn't pass")
+
+let type_of_exp = TypeChecker.type_of_exp
+
+
 
 let%test "Type of id function should be polymorphic and correct" =
   type_of_exp empty_env id_func |> typecheck_correct = TForAll ("X", TFunc (TVar "X", TVar "X"))
@@ -34,8 +44,8 @@ let%test "Instatiating Type of id function" =
   type_of_exp empty_env (ETApp (id_func, Typ TInt)) |> typecheck_correct = TFunc (TInt, TInt)
 let%test "Id function evaluted or not should have the same type" =
   type_of_exp empty_env (ETApp (id_func, Typ TInt)) |> typecheck_correct = 
-    ((eval' (ETApp (id_func, Typ TInt)) >>= fun res ->
-    type_of_value empty_env res) |> fst |> Option.get)
+    let res = eval' (ETApp (id_func, Typ TInt)) |> Option.get in
+    TypeChecker.type_of_value empty_env res |> TypeChecker.get_result |> Option.get
 let%test "Function type of double function is polymorphic and correct" =
   type_of_exp empty_env double |> typecheck_correct =
     TForAll ("X", TFunc (TFunc (TVar "X", TVar "X"), TFunc (TVar "X", TVar "X")))
@@ -46,26 +56,11 @@ let%test "Typecheck double applied to Int function" =
   type_of_exp empty_env (App (App (double, int_func), Int 2)) |> typecheck_correct =
     TFunc (TInt, TFunc (TInt, TInt))
 let%test "Typecheck ETApp error" =
-  type_of_exp empty_env (ETApp (Abs ("x", TVar "X", id_func), Int 1)) = 
-    (None, [Error "ETApp applied e2 is not a type"])
+  type_of_exp empty_env (ETApp (Abs ("x", TVar "X", id_func), Int 1)) |> TypeChecker.get_result = None
 let%test "Typecheck App error" =
-  type_of_exp empty_env (App (Int 3, Int 1)) = 
-    (None,
- [Error "Wrong application types. Failed the T-App rule with Type TInt ";
-  TypeOfExp (empty_env, Int 1); TypeOfExp (empty_env, Int 3)])
+  type_of_exp empty_env (App (Int 3, Int 1)) |> TypeChecker.get_result = None
 let%test "Typecheck applying types to a wrong type" =
-  type_of_exp empty_env (App (Abs ("x", TFunc (TVar "X", TVar "x"), Var "x"), Int 2)) = 
-    (None,
-     [Error
-        "Wrong application types. Failed the T-App rule where ty_param is TFunc TVar X TVar x and e2_ty is TInt ";
-      TypeOfExp ({types = []; variables = []}, Int 2);
-      TypeOfExp ({types = []; variables = []},
-                 Abs ("x", TFunc (TVar "X", TVar "x"), Var "x"));
-      TypeOfExp ({types = [("x", TypV (TFunc (TVar "X", TVar "x")))]; variables = []}, Var "x");
-      LookupType ("x",{types = [("x", TypV (TFunc (TVar "X", TVar "x")))]; variables = []});
-      PropTy ({types = []; variables = []}, TFunc (TVar "X", TVar "x"));
-      LookupType ("x", {types = []; variables = []});
-      LookupType ("X", {types = []; variables = []})])
+  type_of_exp empty_env (App (Abs ("x", TFunc (TVar "X", TVar "x"), Var "x"), Int 2)) |> TypeChecker.get_result = None
 let%test "SelfApp Typing is correct" = 
   type_of_exp empty_env selfApp |> typecheck_correct =
     TFunc (TForAll ("X", TFunc (TVar "X", TVar "X")),

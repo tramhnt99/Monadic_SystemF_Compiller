@@ -193,21 +193,6 @@ module LinkedGraph = struct
          (s_id, Some d_id)
     in
     (*Update the set of edges*)
-    g.edges := EdgeSet.add (src_id, dst_id) !(g.edges);
-         
-    
-
-
-
-  (*Combine the graph g2 into graph g1*)
-  (* let combine_graphs g1 g2 : ('a, 'b) graph =
-   *   
-   *   NodeSet.iter (fun node -> 
-   *       if id_node_in_graph g1 node then (\* just update the edges *\)
-   *         
-   *         
-   *     ) g2 *)
-    
-    
+    g.edges := EdgeSet.add (src_id, dst_id) !(g.edges)
 
 end

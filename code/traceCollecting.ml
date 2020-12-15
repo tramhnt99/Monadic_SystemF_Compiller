@@ -5,9 +5,9 @@ Tram Hoang
  *)
 
 module TraceCollectingSemanMonad = struct
-  open SystemF_sig.SystemF0Signature
-  open Monad_systemF_sig.MonadSystemFSignature
-  open Datastructures.LinkedGraph
+  (* open SystemFSig.SystemF0Signature
+   * open MonadSystemFSig.MonadSystemFSignature
+   * open Datastructures.LinkedGraph *)
 
   (*
     function result - 'a option
@@ -16,8 +16,8 @@ module TraceCollectingSemanMonad = struct
                   edges - log list (function calls that lead to said states)
    *)
 
-  type 'a t = 'a option * (environment, log list) graph
-  let empty = mk_graph
+  (* type 'a t = 'a option * (environment, log list) graph
+   * let empty = mk_graph *)
 
   (* Combine the graph g2 into graph g1 *)
   (*Note that although ids are unique in a graph, between graphs they are not*)

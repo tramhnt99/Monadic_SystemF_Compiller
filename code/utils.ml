@@ -1,5 +1,4 @@
-open SystemF_sig
-open SystemF0Signature
+open SystemFSig.SystemF0Signature
 open Format
 
 (* ********************************* String of functions ************************ *)

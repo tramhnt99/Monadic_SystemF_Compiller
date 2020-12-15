@@ -3,7 +3,7 @@ Church numerals
 Year 4 Capstone Project
 Tram Hoang
  *)
-open SystemF_sig.SystemF0Signature
+open SystemFSig.SystemF0Signature
 
 (*Church Numertals Type *)
 let cNat: ty = TForAll ("X", TFunc (TFunc (TVar "X", TVar "X"), TFunc (TVar "X", TVar "X")))

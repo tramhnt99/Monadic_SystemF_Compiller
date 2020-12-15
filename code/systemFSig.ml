@@ -43,5 +43,12 @@ module SystemF0Signature = struct
   and environment = {types: (string * value) list
                     ; variables: (string * value) list}
 
+  (*Log stands for every single function *)
+  type log = 
+    | Eval of exp
+    | Error of string
+    | TypeOfExp of exp
+    | TypeOfValue of value
+
 end
 
