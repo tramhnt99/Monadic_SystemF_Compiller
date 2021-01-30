@@ -6,6 +6,8 @@ Tram Hoang
 
 open SystemFSig.SystemF0Signature
 open Utils
+(* open Core_kernel
+ * open Result.Let_syntax *)
 
 module type MonadAbstractSig = 
   sig
@@ -88,30 +90,4 @@ module SemanticsMonad : MonadAbstractSig =
           ) "" m
       in
       "[ " ^ logs ^ " ]"
-  end
-
-(*Semnatics Monad but remove bind logic (WrapperEval handles)
-
-ASK PROF ABOUT THIS TYPE ERROR *)
-(* module WrapperSemanticsMonad : MonadAbstractSig = 
- *   struct
- *     include SemanticsMonad
- *     let (>>=) (m: 'a monad)
- *           (f: 'a -> 'b monad) : 'b monad =
- *       match m with
- *       | (None, l) -> None, l
- *       | (Some e, l) -> f e
- *       
- *   end *)
-
-
-module WrapperSemanticsMonad : MonadAbstractSig = 
-  struct
-    include SemanticsMonad
-    let (>>=) (m: 'a monad)
-          (f: 'a -> 'b monad) : 'b monad =
-      let res = SemanticsMonad.get_result m in
-      match res with
-      | None -> SemanticsMonad.construct_monad None (SemanticsMonad.get_monad m)
-      | Some e -> f e
   end
