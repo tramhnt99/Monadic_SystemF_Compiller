@@ -46,7 +46,7 @@ module SystemF0Signature = struct
   (*Log stands for every single function *)
   type log = 
     | Eval of exp
-    | Error of string
+    | ErrorLog of string
     | TypeOfExp of exp
     | TypeOfValue of value
 

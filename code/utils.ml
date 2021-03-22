@@ -15,8 +15,8 @@ let rec string_of_exp e =
   | ETVar tv -> "TVar " ^ tv
   | Abs (v, ty, e') -> "Abs " ^ v ^ " " ^ string_of_ty ty ^ " " ^ string_of_exp e'
   | App (e1, e2) -> "App " ^ string_of_exp e1 ^ " " ^ string_of_exp e2
-  | ETAbs (tv, e') -> "TAbs " ^ tv ^ " " ^ string_of_exp e'
-  | ETApp (e1, e2) -> "TApp " ^ string_of_exp e1 ^ " " ^ string_of_exp e2 
+  | ETAbs (tv, e') -> "ETAbs " ^ tv ^ " " ^ string_of_exp e'
+  | ETApp (e1, e2) -> "ETApp " ^ string_of_exp e1 ^ " " ^ string_of_exp e2 
   | Binop (_, e1, e2) -> "Binop " ^ "some binop " ^ string_of_exp e1 ^ " " ^ string_of_exp e2 
   | Typ ty -> "Typ " ^ string_of_ty ty 
             
@@ -52,6 +52,6 @@ let string_of_env (env: environment): string =
 let string_of_log (l: log) : string = 
   match l with
   | Eval e -> "Eval (" ^ (string_of_exp e) ^ " )"
-  | Error s -> "Error \"" ^ s ^ "\"" 
+  | ErrorLog s -> "Error \"" ^ s ^ "\"" 
   | TypeOfExp e -> "TypeOfExp (" ^ (string_of_exp e) ^ " )"
   | TypeOfValue v -> "TypeOfValue (" ^ (string_of_value v) ^ " )"

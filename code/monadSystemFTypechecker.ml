@@ -31,7 +31,7 @@ module MonadicTypeChecker (Monad: MonadAbstractSig): TypeChecker = struct
 
   let rec type_of_exp (env: environment) (e: exp) : (ty * environment) monad = 
     let name = TypeOfExp e in
-    let rt = fun res -> return res name (Some env) in
+    let rt = fun res -> return res name env in
     match e with
     | Int _ -> (TInt, env) |> rt
     | Typ ty -> (ty, env) |> rt
@@ -97,7 +97,7 @@ module MonadicTypeChecker (Monad: MonadAbstractSig): TypeChecker = struct
     
   let type_of_value (env: environment) (v: value): ty monad = 
     let name = TypeOfValue v in
-    let rt = fun res -> return res name (Some env) in
+    let rt = fun res -> return res name env in
     match v with
     | IntV _ -> TInt |> rt
     | Closure (_, v_op, t, e) -> 

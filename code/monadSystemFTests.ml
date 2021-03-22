@@ -19,7 +19,7 @@ let empty_env : environment = {types = []; variables = []}
 
 let eval' = (fun exp -> Evaluator.eval empty_env exp |> Evaluator.get_result)
 
-let%test "Evaluate polymorphic id function" = 
+let%test "Evaluate polymorphic id func ec tion" = 
   eval' (App (ETApp (id_func, Typ TInt), Int 1)) = Some (IntV 1)
 let%test "Evaluate double for all polymorphic \"X\" to become Int" =
   eval' (ETApp (double, Typ TInt)) = 
@@ -79,16 +79,34 @@ let%test "Ctwo is of type cNat" =
 
 
 
+(* ***************************** CPS Monad tests ******************************************** *)
+open CPSMonadicEvaluator
 
-(*Write testing for breaking the typechecker/evaluator. e.g. app to wrong type*)
-(*
-open Monad_systemF_typechecker.MonadSystemFTypeChecker;;
-open Monad_systemF_eval.MonadSystemFEvaluator;;
-open SystemF_sig.SystemF0Signature;;
-open Monad_systemF_sig.MonadSystemFSignature;;
-open Monad_systemF_tests;;
-open CNat;;
+let%test "CPS Monad test1" =
+  eval_without_cps (App (ETApp (id_func, Typ TInt), Int 1)) empty_env =
+    (Ok (IntV 1, {types = [("X", TypV TInt)]; variables = [("x", IntV 1)]}),
+      [Eval (Var "x")])
 
-type_of_exp [("x", TypV (TForAll ("X", TFunc (TVar "X", TVar "X"))))] 
-(ETApp (Var "x", Typ (TForAll ("X", TFunc (TVar "X", TVar "X")))));;
- *)
+let%test "CPS Monad test2" = 
+  eval_without_cps (ETApp (double, Typ TInt)) empty_env =
+    (Ok
+        (Closure ({types = [("X", TypV TInt)]; variables = []}, Some "f",
+          TFunc (TInt, TInt), Abs ("a", TInt, App (Var "f", App (Var "f", Var "a")))),
+        {types = [("X", TypV TInt)]; variables = []}),
+      [])
+
+let%test "CPSMonad test3" =
+  eval_without_cps (App (App (double, int_func), Int 2)) empty_env =
+    (Ok
+    (IntV 6,
+    {types = [];
+      variables =
+      [("k", IntV 4); ("a", IntV 2);
+        ("f",
+        Closure ({types = []; variables = []}, Some "k", TInt,
+          Binop (Add, Var "k", Int 2)))]}),
+          [Eval (Var "a"); Eval (Var "k"); Eval (Var "k")])
+
+let%test "CPSMonad testError1" =
+  eval_without_cps (App (Int 2, Int 3 )) empty_env =
+    (Error "App to a non function", [])
