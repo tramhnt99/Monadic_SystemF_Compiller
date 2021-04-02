@@ -95,18 +95,31 @@ module CPSLogMonad = struct
   (* Continuation k takes on result and log *)
   type ('a, 'b) monad = (('a, String.t) result -> 'b) -> 'b
   let return x (k:('a, String.t) result -> 'b) = k (Ok x)
-      
-  let (>>=) (x: ('a, 'b) monad) f : ('c, 'b) monad = fun k ->
+
+  let (>>=) x f k = 
     let k' r = 
       match r with
-      | Ok z -> (f z) k
+      | Ok z -> (f z) k   
       | Error _ as x' -> k x' in
     x k'
+
+  (* let (>>=) (x: ('a, log list -> 'b) monad) 
+    (f: 'a -> (('a, String.t) result -> log list -> 'b) -> log list -> 'b)
+    (k: ('a, String.t) result -> log list -> 'b) 
+    (current_log: log list): ('c, 'b) monad = 
+    let k' r =
+      match r with
+      | Ok z -> (f z) k
+      | Error _ as x' -> k x'
+    in
+    x k' *)
+
+  (*NOTE: you can't apply k to a log list because that is not handled in the function eval *)
 
   let return_error s k = 
     k (Error s)
     
-  let update_wrapper thunk log k current_log =
+  let grow_collection thunk log k current_log =
       thunk () k (current_log @ log)
 
 end

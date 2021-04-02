@@ -85,28 +85,49 @@ open CPSMonadicEvaluator
 let%test "CPS Monad test1" =
   eval_without_cps (App (ETApp (id_func, Typ TInt), Int 1)) empty_env =
     (Ok (IntV 1, {types = [("X", TypV TInt)]; variables = [("x", IntV 1)]}),
-      [Eval (Var "x")])
+ [Eval (ETAbs ("X", Abs ("x", TVar "X", Var "x"))); Eval (Typ TInt);
+  Eval (Abs ("x", TVar "X", Var "x")); Eval (Int 1); Eval (Var "x")])
 
 let%test "CPS Monad test2" = 
   eval_without_cps (ETApp (double, Typ TInt)) empty_env =
     (Ok
-        (Closure ({types = [("X", TypV TInt)]; variables = []}, Some "f",
-          TFunc (TInt, TInt), Abs ("a", TInt, App (Var "f", App (Var "f", Var "a")))),
-        {types = [("X", TypV TInt)]; variables = []}),
-      [])
+  (Closure ({types = [("X", TypV TInt)]; variables = []}, Some "f",
+    TFunc (TInt, TInt), Abs ("a", TInt, App (Var "f", App (Var "f", Var "a")))),
+   {types = [("X", TypV TInt)]; variables = []}),
+ [Eval
+   (ETAbs ("X",
+     Abs ("f", TFunc (TVar "X", TVar "X"),
+      Abs ("a", TVar "X", App (Var "f", App (Var "f", Var "a"))))));
+  Eval (Typ TInt);
+  Eval
+   (Abs ("f", TFunc (TVar "X", TVar "X"),
+     Abs ("a", TVar "X", App (Var "f", App (Var "f", Var "a")))))])
 
 let%test "CPSMonad test3" =
   eval_without_cps (App (App (double, int_func), Int 2)) empty_env =
     (Ok
-    (IntV 6,
-    {types = [];
-      variables =
-      [("k", IntV 4); ("a", IntV 2);
-        ("f",
-        Closure ({types = []; variables = []}, Some "k", TInt,
-          Binop (Add, Var "k", Int 2)))]}),
-          [Eval (Var "a"); Eval (Var "k"); Eval (Var "k")])
+  (IntV 6,
+   {types = [];
+    variables =
+     [("k", IntV 4); ("a", IntV 2);
+      ("f",
+       Closure ({types = []; variables = []}, Some "k", TInt,
+        Binop (Add, Var "k", Int 2)))]}),
+ [Eval
+   (ETAbs ("X",
+     Abs ("f", TFunc (TVar "X", TVar "X"),
+      Abs ("a", TVar "X", App (Var "f", App (Var "f", Var "a"))))));
+  Eval (Abs ("k", TInt, Binop (Add, Var "k", Int 2)));
+  Eval
+   (Abs ("f", TFunc (TVar "X", TVar "X"),
+     Abs ("a", TVar "X", App (Var "f", App (Var "f", Var "a")))));
+  Eval (Abs ("k", TInt, Binop (Add, Var "k", Int 2)));
+  Eval (Abs ("a", TVar "X", App (Var "f", App (Var "f", Var "a"))));
+  Eval (Int 2); Eval (Abs ("k", TInt, Binop (Add, Var "k", Int 2)));
+  Eval (Abs ("k", TInt, Binop (Add, Var "k", Int 2))); Eval (Var "a");
+  Eval (Var "k"); Eval (Int 2); Eval (Binop (Add, Var "k", Int 2));
+  Eval (Var "k"); Eval (Int 2); Eval (Binop (Add, Var "k", Int 2))])
 
 let%test "CPSMonad testError1" =
   eval_without_cps (App (Int 2, Int 3 )) empty_env =
-    (Error "App to a non function", [])
+    (Error "App to a non function", [Eval (Int 2); Eval (Int 3)])

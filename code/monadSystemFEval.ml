@@ -104,15 +104,16 @@ module CPSMonadicEvaluator = struct
   type ('a, 'b) monad = ('a, 'b) C.monad
   let (>>=) = C.(>>=)
   let return = C.return
-  let update_w = C.update_wrapper
+  let update_w = C.grow_collection
                
   (*Using continuation passing style*)
   (*TODO: make lookup_var monadic again!!*)
   let rec eval_without_tc (t:exp) (env: environment) : (value * environment, log list -> ('c, 'd) result) monad =
     let name = Eval t in
+    let ret thunk = update_w thunk [name] in
     match t with
-    | Int i -> return (IntV i, env)
-    | Typ ty -> return (TypV ty, env)
+    | Int i -> ret @@ fun () -> return (IntV i, env)
+    | Typ ty -> ret @@ fun () -> return (TypV ty, env) 
     | Var v ->
       let nv = lookup_var v env in
       let thunk () = return (Option.get nv, env) in
@@ -124,7 +125,7 @@ module CPSMonadicEvaluator = struct
       if Option.is_some nv then update_w thunk [name]
       else C.return_error "Type var doesn't exist in the environment"
     | ETAbs (tv, exp) -> 
-      return (Closure (env, None, TVar tv, exp), env)
+      ret @@ fun () -> return (Closure (env, None, TVar tv, exp), env)
     | ETApp (e1, e2) ->
       eval_without_tc e1 env >>= fun lhs ->
       eval_without_tc e2 env >>= fun rhs ->
@@ -137,7 +138,7 @@ module CPSMonadicEvaluator = struct
        | _ -> C.return_error "App to a non closure/tried to apply a non type"
       )
     | Abs (v, ty, exp) -> 
-      return (Closure (env, Some v, propTy env ty, propValTy env exp), env)
+      ret @@ fun () -> return (Closure (env, Some v, propTy env ty, propValTy env exp), env)
     | App (e1 ,e2) -> 
       eval_without_tc e1 env >>= fun lhs ->
       eval_without_tc e2 env >>= fun rhs ->
@@ -157,10 +158,10 @@ module CPSMonadicEvaluator = struct
        (match fst lhs, fst rhs with
         | IntV i1, IntV i2 ->
            (match b with
-            | Add -> return (IntV (i1 + i2), env)
-            | Sub -> return (IntV (i1 - i2), env)
-            | Mul -> return (IntV (i1 * i2), env)
-            | Div -> return (IntV (i1 / i2), env)
+            | Add -> ret @@ fun () -> return (IntV (i1 + i2), env)
+            | Sub -> ret @@ fun () -> return (IntV (i1 - i2), env)
+            | Mul -> ret @@ fun () -> return (IntV (i1 * i2), env)
+            | Div -> ret @@ fun () -> return (IntV (i1 / i2), env)
            )
         | _ -> C.return_error "Binop applied to non-Int type"
        )    
